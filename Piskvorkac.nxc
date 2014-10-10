@@ -1,0 +1,265 @@
+//premeni z 1 -> x, 2 -> o, 0 -> prazdne
+string premen(int in)
+{
+  if (in == 0)
+     return " ";
+  if (in == 1)
+     return "x";
+  return "o";
+}
+
+//vykresli piskvorky na obrazovke
+void vypis(int piskvorky[])
+{
+  for (int x=0; x<3; x+=1)  {
+        TextOut(10, (50 - x * 16), premen(piskvorky[x * 3]));
+        TextOut(16, (50 - x * 16), "|");
+        TextOut(22, (50 - x * 16), premen(piskvorky[(x * 3 + 1)]));
+        TextOut(28, (50 - x * 16), "|");
+        TextOut(34, (50 - x * 16), premen(piskvorky[(x * 3 + 2)]));
+        }
+  TextOut(10, 42, "-+-+-");
+  TextOut(10, 26, "-+-+-");
+}
+
+//skontroluje 3 policka, ci ma "kto" ako vyhrat na tychto polickach,
+//ak hej vrati vyherne policko, ak nie vrati -1
+int skontroluj_3(int a, int b, int c, int piskvorky[], int kto)
+{
+    if ((piskvorky[a] == piskvorky[b]) && (piskvorky[a] == kto) &&
+        (piskvorky[c] == 0))
+        return c;
+    if ((piskvorky[a] == piskvorky[c]) && (piskvorky[a] == kto) &&
+        (piskvorky[b] == 0))
+        return b;
+    if ((piskvorky[b] == piskvorky[c]) && (piskvorky[b] == kto) &&
+        (piskvorky[a] == 0))
+        return a;
+    return -1;
+}
+
+//z indexu policka v piskvoriek vrati idex toho isteho policka,
+//ale ak by sa piskvorky otocili o 90° doprava
+int otoc(int a)
+{
+    int cislo = (3 * (a + 1))%10;
+    return (cislo - 1);
+}
+
+//vrati policko, kde moze dany hrac vyhrat, ak este nemoze vrati -1
+int moze_vyhrat(int kto, int piskvorky[])
+{
+    // skontroluje riadky
+    for (int i = 0; i < 3; i+=1) {
+        int kde_moze = skontroluj_3(i * 3, i * 3 + 1, i * 3 + 2, piskvorky, kto);
+        if (kde_moze != -1)
+           return kde_moze;
+    }
+    
+    // skontroluje stlpce
+    for (int i = 0; i < 3; i+=1) {
+        int kde_moze = skontroluj_3(otoc(i * 3), otoc(i * 3 + 1),
+                       otoc(i * 3 + 2), piskvorky, kto);
+        if (kde_moze != -1)
+           return kde_moze;
+    }
+    
+    // skontroluje diagonalu_1
+    int kde_moze = skontroluj_3(0, 4, 8, piskvorky, kto);
+    if (kde_moze != -1)
+       return kde_moze;
+       
+    // skontroluje diagonalu_2
+    kde_moze = skontroluj_3(otoc(0), otoc(4), otoc(8), piskvorky, kto);
+    if (kde_moze != -1)
+       return kde_moze;
+
+    return -1;
+}
+
+//taktika tahania robota, vrati policko, kam ma dat;
+//kam_dal = policko kam dal super posledny tah;
+//verzia = dve verzie hrania, 1 alebo 2
+int tahaj(int piskvorky[], int kolo, int verzia, int kam_dal)
+{
+    // ak mozem vyhrat, vyhram
+    int a = moze_vyhrat(2, piskvorky);
+    if (a != -1)
+       return a;
+    // ak super moze vyhrat, zablokujem ho
+    a = moze_vyhrat(1, piskvorky);
+    if (a != -1)
+       return a;
+
+    if (verzia == 1) {
+       // prvy tah = lavy horny roh
+       if (kolo == 1)
+          return 0;
+          // druhy tah = ak dal do dvoch najblizsich rohov, alebo do stredu,
+          // dam do rohu proti, inak dam do stredu
+       if (kolo == 2) {
+            if (piskvorky[2] == 1 || piskvorky[6] == 1 || piskvorky[4] == 1)
+               return 8;
+            return 4;
+       }
+       // treti tah = ak dal na jednotku dam na trojku a naopak
+       if (kolo == 3) {
+            if (piskvorky[1] == 1)
+               return 3;
+            return 1;
+       }
+    }
+    
+    if (verzia == 2)
+    {
+         //prvy tah do stredu
+         if (kolo == 1)
+            return 4;
+         //druhy tah, ak dal do rohu, dam oproti, ak dal pri stenu, dam do rohu
+         if (kolo == 2) {
+              if (piskvorky[0] == 1 || piskvorky[2] == 1 || piskvorky[6] == 1 ||
+                   piskvorky[8] == 1)
+                 return 8 - kam_dal;
+              else
+                  return 16 / (kam_dal / 4) - 8;
+         }
+         //treti tah: toto sa vykona iba ak nevyjde "moze_vyhrat"
+         //           a toto su vsetky moznosti
+         if (kolo == 3) {
+              if ((piskvorky[5] == 1 && piskvorky[2] == 2) ||
+                   (piskvorky[7] == 1 && piskvorky[6] == 2))
+                 return 0;
+              if ((piskvorky[3] == 1 && piskvorky[0] == 2) ||
+                   (piskvorky[7] == 1 && piskvorky[8] == 2))
+                   return 2;
+              if ((piskvorky[1] == 1 && piskvorky[0] == 2) ||
+                   (piskvorky[5] && piskvorky[8] == 2))
+                   return 6;
+              if (piskvorky[8] == 0)
+                  return 8;
+              {
+                  int x = Random(9);
+                  while (piskvorky[x] != 0)
+                    x = Random(9);
+                  return x;
+              }
+         }
+         //teraz je to uz jedno, takze Random
+         {
+              int x = Random(9);
+              while (piskvorky[x] != 0)
+                    x = Random(9);
+              return x;
+         }
+    }
+}
+
+//vrati, ci uz vyhral dany hrac
+bool vyhral(int piskvorky[], int kto)
+{
+    if (piskvorky[0] == piskvorky[1] && piskvorky[0] == piskvorky[2] &&
+         piskvorky[0] == kto)
+        return true;
+    if (piskvorky[3] == piskvorky[4] && piskvorky[3] == piskvorky[5] &&
+         piskvorky[3] == kto)
+        return true;
+    if (piskvorky[6] == piskvorky[7] && piskvorky[6] == piskvorky[8] &&
+         piskvorky[6] == kto)
+        return true;
+    if (piskvorky[0] == piskvorky[3] && piskvorky[0] == piskvorky[6] &&
+         piskvorky[0] == kto)
+        return true;
+    if (piskvorky[1] == piskvorky[4] && piskvorky[1] == piskvorky[7] &&
+         piskvorky[1] == kto)
+        return true;
+    if (piskvorky[2] == piskvorky[5] && piskvorky[2] == piskvorky[8] &&
+         piskvorky[2] == kto)
+        return true;
+    if (piskvorky[0] == piskvorky[4] && piskvorky[0] == piskvorky[8] &&
+         piskvorky[0] == kto)
+        return true;
+    if (piskvorky[2] == piskvorky[4] && piskvorky[2] == piskvorky[6] &&
+         piskvorky[2] == kto)
+        return true;
+    return false;
+}
+
+//vrati policko, kam dal hrac svoj tah
+int zisti_kam(int piskvorky[], int pos)
+{
+    TextOut(60, LCD_LINE2, "1|2|3");
+    TextOut(60, LCD_LINE3, "-+-+-");
+    TextOut(60, LCD_LINE4, "4|5|6");
+    TextOut(60, LCD_LINE5, "-+-+-");
+    TextOut(60, LCD_LINE6, "7|8|9");
+
+    ResetTachoCount(OUT_A);
+    int policko = pos;
+
+    while (Sensor(IN_1) == 0 || piskvorky[policko] != 0) {
+          NumOut(10, LCD_LINE8, policko + 1);
+          //MAGIA, ktora z otocenia motora spravi policko
+          policko = (((MotorTachoCount(OUT_A) / -40)%9) + 9 + pos)%9;
+    }
+    
+    //pocka pokym je touch odstlaceny
+    while (1) {
+          if (Sensor(IN_1) == 0)
+             break;
+    }
+    return policko;
+}
+
+task main()
+{
+     SetSensorTouch(IN_1);
+     // 1 on, 2 ja
+     int piskvorky[] = {
+     0, 0, 0,
+     0, 0, 0,
+     0, 0, 0
+     };
+     int n = 0;
+     int kto_ide = -1; // -1 = ja, 1 = on
+     int pos = 0;
+     //nahodne vybere ako hrat, tak ci tak robot nikdy neprehra
+     int verzia = Random(2) + 1;
+     
+     while ((n < 45) && (vyhral(piskvorky, 2) == false) &&
+             (vyhral(piskvorky, 1) == false))
+     {
+           ClearScreen();
+           vypis(piskvorky);
+           if (kto_ide == -1) {
+              piskvorky[tahaj(piskvorky, n / 10 + 1, verzia, pos)] = 2;
+              n += 5;
+           }
+           else {
+                pos = zisti_kam(piskvorky, pos);
+                piskvorky[pos] = 1;
+                n += 5;
+           }
+           kto_ide *= -1;
+     }
+     
+     //vypise kto vyhral
+     ClearScreen();
+     vypis(piskvorky);
+     if (vyhral(piskvorky, 1)) {
+        TextOut(50, LCD_LINE3, "VYHRAL");
+        TextOut(50, LCD_LINE4, "SI!");
+     }
+     else if (vyhral(piskvorky, 2)) {
+          TextOut(50, LCD_LINE3, "PREHRAL");
+          TextOut(50, LCD_LINE4, "SI!");
+     }
+     else
+         TextOut(50, LCD_LINE3, "REMIZA");
+     //ukoncenie programu touchom
+     while (1) {
+           if (Sensor(IN_1))
+              break;
+     }
+     
+     
+}
